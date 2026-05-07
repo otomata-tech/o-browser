@@ -30,9 +30,14 @@ async with BrowserClient(record=True) as browser:
 async with BrowserClient(interactive=True) as browser:
     await browser.wait_closed()
 
-# Connect to remote Chrome (e.g. o-browser-server)
-async with RemoteBrowser("http://host:8080") as browser:
+# Connect to remote Chrome (e.g. o-browser-full)
+# RemoteBrowser auto-creates a session via POST /api/sessions if none active.
+async with RemoteBrowser("http://host:8080", workflow="my-app") as browser:
     await browser.goto("https://example.com")
+
+# Disable auto-session if you manage sessions yourself
+async with RemoteBrowser("http://host:8080", auto_session=False) as browser:
+    ...
 ```
 
 ## Features
@@ -47,4 +52,4 @@ async with RemoteBrowser("http://host:8080") as browser:
 
 ## Related
 
-For a full remote browser service with VNC, session management, and recording, see [o-browser-server](https://github.com/AlexisLaporte/o-browser-server).
+For a full remote browser service with VNC, session management, and recording, see [o-browser-full](https://github.com/otomata-tech/o-browser-full).
