@@ -44,11 +44,23 @@ async with RemoteBrowser("http://host:8080", auto_session=False) as browser:
 
 - Headless and headful modes
 - Persistent Chrome profiles
-- HAR + video recording
+- HAR + video recording (HAR captured Python-side, survives the user closing the window in interactive mode)
 - Proxy support
 - Cookie management
 - CDP connection to existing Chrome instances
 - Anti-detection via Patchright
+
+## Site adapters (plugins)
+
+Site-specific scrapers are **separate distributions**, not bundled in core. Each registers in the
+`o_browser.sites` entry-point group and is discovered at runtime:
+
+```python
+from o_browser import load_site, available_sites
+
+available_sites()                       # -> ['vivatech', ...] (installed adapters)
+VivaTechClient = load_site("vivatech")   # pip install o-browser-vivatech
+```
 
 ## Related
 

@@ -4,8 +4,9 @@ build-backend = "hatchling.build"
 
 [project]
 name = "o-browser"
-version = "0.3.0"
+version = "0.3.1"
 description = "Browser automation client — local Chrome via Patchright or remote via CDP"
+readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
 authors = [
