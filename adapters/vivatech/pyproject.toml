@@ -1,0 +1,23 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "o-browser-vivatech"
+version = "0.1.0"
+description = "VivaTech exhibitors directory adapter for o-browser"
+requires-python = ">=3.10"
+license = "MIT"
+authors = [
+    { name = "Alexis Laporte" }
+]
+dependencies = [
+    "o-browser>=0.3.0",
+]
+
+# Discovered by o-browser core via `load_site("vivatech")`.
+[project.entry-points."o_browser.sites"]
+vivatech = "o_browser_vivatech:VivaTechClient"
+
+[tool.hatch.build.targets.wheel]
+packages = ["o_browser_vivatech"]
