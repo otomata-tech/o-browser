@@ -30,6 +30,7 @@ from pathlib import Path
 from typing import Optional, List, Dict, Callable
 
 from ._mixin import PageMixin
+from .har import HARRecorder
 
 
 def _detect_channel() -> str:
@@ -88,6 +89,7 @@ class BrowserClient(PageMixin):
         self._page = None
         self._closed_event: Optional[asyncio.Event] = None
         self._cdp_owns_browser = False
+        self._har: Optional[HARRecorder] = None
 
         self._response_handlers: List[Callable] = []
 
@@ -124,8 +126,8 @@ class BrowserClient(PageMixin):
         if self.record:
             rec_dir = self._prepare_record_dir()
             self.record_dir = rec_dir
-            opts["record_har_path"] = str(rec_dir / "network.har")
-            opts["record_har_content"] = "embed"
+            # HAR is captured Python-side (see HARRecorder) so it survives the user
+            # closing the browser in interactive mode; only the video is left to Playwright.
             opts["record_video_dir"] = str(rec_dir)
         return opts
 
@@ -181,6 +183,10 @@ class BrowserClient(PageMixin):
         if self.cookies:
             await self.add_cookies(self.cookies)
 
+        if self.record:
+            self._har = HARRecorder()
+            self._har.attach(self._context)
+
         if self._response_handlers:
             self._page.on("response", self._on_response)
 
@@ -230,6 +236,15 @@ class BrowserClient(PageMixin):
                 await self._context.storage_state(path=str(state_path))
             except Exception:
                 pass
+
+        # Write the HAR from our Python-side buffer. This runs even when the browser was
+        # already torn down by the user (interactive mode), unlike Playwright's native HAR.
+        if self.record and self._har and self.record_dir:
+            try:
+                n = self._har.write(str(self.record_dir / "network.har"))
+                print(f"HAR: {n} entries -> {self.record_dir / 'network.har'}")
+            except Exception as e:
+                print(f"HAR write failed: {e}")
 
         if self._cdp_owns_browser:
             # CDP mode: only close pages we opened, don't kill the browser
