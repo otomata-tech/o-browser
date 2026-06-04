@@ -1,0 +1,39 @@
+name: publish
+
+# Publie o-browser sur PyPI au push d'un tag `vX.Y.Z`.
+# Trusted publishing (OIDC) — aucun token stocké : PyPI fait confiance à ce repo+workflow.
+# Setup unique côté PyPI : https://pypi.org/manage/project/o-browser/settings/publishing/
+#   Owner: otomata-tech · Repo: o-browser · Workflow: publish.yml (Environment: vide)
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  publish:
+    name: Build & publish to PyPI
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write # requis pour le trusted publishing OIDC
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Vérifier tag == version pyproject
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          VER=$(python -c "import tomllib;print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
+          echo "tag=$TAG  pyproject=$VER"
+          test "$TAG" = "$VER" || { echo "::error::tag '$TAG' != version pyproject '$VER'"; exit 1; }
+
+      - name: Build (sdist + wheel)
+        run: |
+          python -m pip install --upgrade build
+          python -m build
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
