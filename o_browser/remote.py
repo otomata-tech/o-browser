@@ -72,19 +72,39 @@ class RemoteBrowser(PageMixin):
         # 1. Existing session on o-browser-full — reuse only if it runs the profile we want
         ws_url = self._fetch_current_session_ws(base, require_profile=self.profile)
         if ws_url:
-            return ws_url
+            return self._rewrite_ws_host(ws_url, base)
 
         # 2. Auto-create a session (o-browser-full)
         if self.auto_session:
             ws_url = self._create_session_and_get_ws(base, self.workflow, self.profile)
             if ws_url:
-                return ws_url
+                return self._rewrite_ws_host(ws_url, base)
 
         # 3. Fallback: direct CDP /json/version (raw Chrome remote-debugging)
         cdp_base = re.sub(r":\d+", ":9222", base)
         with urllib.request.urlopen(f"{cdp_base}/json/version", timeout=5) as resp:
             data = json.loads(resp.read())
-            return data["webSocketDebuggerUrl"]
+            return self._rewrite_ws_host(data["webSocketDebuggerUrl"], base)
+
+    @staticmethod
+    def _rewrite_ws_host(ws_url: Optional[str], endpoint: str) -> Optional[str]:
+        """Point a CDP ws_url at the endpoint's host.
+
+        o-browser-full reports its CDP ws as ``ws://127.0.0.1:<port>/...`` (its own
+        loopback view). A caller on another machine must reach it at the box's
+        address, so we swap the host for the one in `endpoint` while keeping the ws
+        port the box exposes. No-op for a localhost endpoint or a ws_url without host.
+        """
+        if not ws_url:
+            return ws_url
+        from urllib.parse import urlparse, urlunparse
+
+        host = urlparse(endpoint if "://" in endpoint else f"http://{endpoint}").hostname
+        if not host:
+            return ws_url
+        parts = urlparse(ws_url)
+        netloc = f"{host}:{parts.port}" if parts.port else host
+        return urlunparse(parts._replace(netloc=netloc))
 
     @staticmethod
     def _fetch_current_session_ws(base: str, require_profile: Optional[str] = None) -> Optional[str]:
@@ -142,9 +162,9 @@ class RemoteBrowser(PageMixin):
         """
         base = endpoint.rstrip("/")
         ws_url = cls._fetch_current_session_ws(base, require_profile=profile)
-        if ws_url:
-            return ws_url
-        return cls._create_session_and_get_ws(base, workflow, profile)
+        if not ws_url:
+            ws_url = cls._create_session_and_get_ws(base, workflow, profile)
+        return cls._rewrite_ws_host(ws_url, base)
 
     async def start(self) -> "RemoteBrowser":
         """Connect to remote browser."""
