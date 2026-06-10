@@ -67,8 +67,14 @@ class BrowserClient(PageMixin):
         record_dir: Optional[str] = None,
         interactive: bool = False,
         cdp_url: Optional[str] = None,
+        strip_headless_ua: bool = True,
     ):
         self.cdp_url = cdp_url
+        # Headless Chrome leaks a "HeadlessChrome/<v>" token in navigator.userAgent
+        # — a trivial bot tell that gets sessions flagged (notably LinkedIn revokes
+        # a fresh cookie the moment it's reused from a HeadlessChrome UA). Rewrite it
+        # to the normal "Chrome/<v>" token unless the caller pinned an explicit UA.
+        self.strip_headless_ua = strip_headless_ua
         self.profile_path = Path(profile_path).expanduser() if profile_path else None
         self.headless = headless if not interactive else False
         self.channel = channel or os.environ.get("BROWSER_CHANNEL") or _detect_channel()
@@ -180,6 +186,9 @@ class BrowserClient(PageMixin):
             self._context = await self._browser.new_context(**ctx_opts)
             self._page = await self._context.new_page()
 
+        if self.strip_headless_ua and not self.user_agent and not self.cdp_url:
+            await self._strip_headless_ua()
+
         if self.cookies:
             await self.add_cookies(self.cookies)
 
@@ -196,6 +205,27 @@ class BrowserClient(PageMixin):
             self._setup_close_detection()
 
         return self
+
+    async def _strip_headless_ua(self):
+        """Rewrite the HeadlessChrome UA token to Chrome across all pages.
+
+        Reads the live navigator.userAgent, and if it carries the headless
+        marker, overrides it via CDP (Emulation.setUserAgentOverride applies to
+        every navigation, unlike a per-page evaluate). No-op when already clean.
+        """
+        try:
+            ua = await self._page.evaluate("() => navigator.userAgent")
+        except Exception:
+            return
+        if "HeadlessChrome" not in ua:
+            return
+        clean_ua = ua.replace("HeadlessChrome", "Chrome")
+        try:
+            session = await self._context.new_cdp_session(self._page)
+            await session.send("Emulation.setUserAgentOverride", {"userAgent": clean_ua})
+        except Exception:
+            # Best-effort hardening — never block startup on it.
+            pass
 
     def _setup_close_detection(self):
         """Detect when user closes browser (all pages closed or browser disconnected)."""
