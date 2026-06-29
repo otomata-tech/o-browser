@@ -62,6 +62,8 @@ available_sites()                       # -> ['vivatech', ...] (installed adapte
 VivaTechClient = load_site("vivatech")   # pip install o-browser-vivatech
 ```
 
-## Related
+## Scope — kept & consolidated as the local-CLI browser
 
-For a full remote browser service with VNC, session management, and recording, see [o-browser-full](https://github.com/otomata-tech/o-browser-full).
+`o-browser` is the **canonical, kept** browser lib of Otomata, consolidated as the **local-CLI** browser tooling: disco/scraping on your own machine, where a local Chrome (persistent profiles + anti-detection + HAR) is all you need.
+
+**Server-side browser automation in production runs on the hosted [Browserbase](https://www.browserbase.com) substrate** (cf. `oto-backend`) — a real remote Chrome with persistent Contexts and Live View, off-box (anti-OOM). The former self-hosted remote-Chrome service [o-browser-full](https://github.com/otomata-tech/o-browser-full) (VNC + CDP proxy + recording) is **archived/decommissioned**: it overlapped Browserbase entirely and is never needed locally. It stays re-hostable for a sovereign self-hosted setup, which we don't run.
