@@ -62,6 +62,15 @@ available_sites()                       # -> ['vivatech', ...] (installed adapte
 VivaTechClient = load_site("vivatech")   # pip install o-browser-vivatech
 ```
 
+## Examples
+
+`examples/` — standalone scripts for a recurring recipe, not full adapters (see below for when a
+site graduates to one):
+
+- `digitevent_attendees.py` — export an attendee directory from a Digitevent-powered event app
+  (`RemoteBrowser` + CDP, UI-driven pagination, no private-API/JWT use — see the script's docstring
+  for why).
+
 ## Scope — kept & consolidated as the local-CLI browser
 
 `o-browser` is the **canonical, kept** browser lib of Otomata, consolidated as the **local-CLI** browser tooling: disco/scraping on your own machine, where a local Chrome (persistent profiles + anti-detection + HAR) is all you need.
